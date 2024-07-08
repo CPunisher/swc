@@ -328,8 +328,20 @@ impl<I: Tokens> Parser<I> {
             })));
         }
 
+        let ctx = self.ctx();
         if is!(self, "await") {
-            return self.parse_await_expr(None);
+            // All the following expressions are ambiguous:
+            // await + 0, await - 0, await ( 0 ), await [ 0 ], await / 0 /u, await ``, await
+            // of []
+            let ambiguous = peek!(self).map_or(false, |token| {
+                matches!(
+                    token,
+                    Token::BinOp(..) | tok!('(') | tok!('[') | tok!('`') | tok!("of")
+                )
+            });
+            if ctx.module || ctx.in_async || !ambiguous {
+                return self.parse_await_expr(None);
+            }
         }
 
         // UpdateExpression
@@ -384,6 +396,14 @@ impl<I: Tokens> Parser<I> {
             }
 
             return Ok(Box::new(Expr::Ident(Ident::new("await".into(), span))));
+        }
+
+        if !ctx.module && !ctx.in_async {
+            if ctx.can_be_module {
+                self.state.found_module_item = true;
+            } else {
+                self.emit_err(self.input.cur_span(), SyntaxError::TopLevelAwaitInScript);
+            }
         }
 
         if ctx.in_function && !ctx.in_async {

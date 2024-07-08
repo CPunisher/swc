@@ -106,7 +106,7 @@ impl<'a, I: Tokens> Parser<I> {
             ..self.ctx()
         };
         self.with_ctx(ctx)
-            .parse_stmt_internal(start, include_decl, top_level, decorators)
+            .parse_stmt_internal(start, include_decl, decorators)
             .map(From::from)
     }
 
@@ -115,37 +115,9 @@ impl<'a, I: Tokens> Parser<I> {
         &mut self,
         start: BytePos,
         include_decl: bool,
-        top_level: bool,
         decorators: Vec<Decorator>,
     ) -> PResult<Stmt> {
         trace_cur!(self, parse_stmt_internal);
-
-        if top_level && is!(self, "await") {
-            self.state.found_module_item = true;
-            if !self.ctx().can_be_module {
-                self.emit_err(self.input.cur_span(), SyntaxError::TopLevelAwaitInScript);
-            }
-
-            let mut eaten_await = None;
-            if peeked_is!(self, "using") {
-                eaten_await = Some(self.input.cur_pos());
-                assert_and_bump!(self, "await");
-
-                let v = self.parse_using_decl(start, true)?;
-                if let Some(v) = v {
-                    return Ok(Stmt::Decl(Decl::Using(v)));
-                }
-            }
-
-            let expr = self.parse_await_expr(eaten_await)?;
-            let expr = self
-                .include_in_expr(true)
-                .parse_bin_op_recursively(expr, 0)?;
-            eat!(self, ';');
-
-            let span = span!(self, start);
-            return Ok(Stmt::Expr(ExprStmt { span, expr }));
-        }
 
         let is_typescript = self.input.syntax().typescript();
 
@@ -161,6 +133,16 @@ impl<'a, I: Tokens> Parser<I> {
         match cur!(self, true) {
             tok!("await") if include_decl => {
                 if peeked_is!(self, "using") {
+                    let ctx = self.ctx();
+                    if !ctx.module && !ctx.in_async {
+                        self.state.found_module_item = true;
+                        if !self.ctx().can_be_module {
+                            self.emit_err(
+                                self.input.cur_span(),
+                                SyntaxError::TopLevelAwaitInScript,
+                            );
+                        }
+                    }
                     assert_and_bump!(self, "await");
                     let v = self.parse_using_decl(start, true)?;
                     if let Some(v) = v {
