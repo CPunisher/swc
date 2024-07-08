@@ -2614,4 +2614,11 @@ const foo;"#;
 
         test_parser(src, Default::default(), |p| p.parse_script());
     }
+
+    #[test]
+    fn issue_8473() {
+        let src = "var await = () => {}; await(2);";
+
+        test_parser(src, Default::default(), |p| p.parse_script());
+    }
 }
