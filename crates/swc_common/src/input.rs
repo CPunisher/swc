@@ -52,6 +52,7 @@ impl<'a> StringInput<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn start_pos(&self) -> BytePos {
         self.orig_start
     }
