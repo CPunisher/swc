@@ -3,11 +3,7 @@
 use std::{cell::RefCell, char, iter::FusedIterator, rc::Rc};
 
 use swc_atoms::AtomStoreCell;
-use swc_common::{
-    comments::Comments,
-    input::{Input, StringInput},
-    BytePos,
-};
+use swc_common::{comments::Comments, input::StringInput, BytePos};
 use swc_ecma_ast::EsVersion;
 use swc_ecma_lexer::{
     common::{

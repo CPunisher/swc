@@ -151,7 +151,7 @@ pub mod lexer;
 mod parser;
 
 pub use lexer::Lexer;
-pub use swc_common::input::{Input, StringInput};
+pub use swc_common::input::StringInput;
 use swc_common::{comments::Comments, input::SourceFileInput, SourceFile};
 use swc_ecma_ast::*;
 use swc_ecma_lexer::{common::parser::Parser as ParserTrait, error::Error};

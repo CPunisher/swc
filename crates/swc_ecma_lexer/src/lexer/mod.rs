@@ -3,11 +3,7 @@
 use std::{cell::RefCell, char, iter::FusedIterator, rc::Rc};
 
 use swc_atoms::AtomStoreCell;
-use swc_common::{
-    comments::Comments,
-    input::{Input, StringInput},
-    BytePos, Span,
-};
+use swc_common::{comments::Comments, input::StringInput, BytePos, Span};
 use swc_ecma_ast::{AssignOp, EsVersion};
 
 pub use self::state::{TokenContext, TokenContexts, TokenFlags, TokenType};

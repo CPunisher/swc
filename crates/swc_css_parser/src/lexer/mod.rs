@@ -3,7 +3,7 @@ use std::{borrow::Cow, cell::RefCell, char::REPLACEMENT_CHARACTER, rc::Rc};
 use swc_atoms::{Atom, AtomStoreCell};
 use swc_common::{
     comments::{Comment, CommentKind, Comments},
-    input::Input,
+    input::StringInput,
     util::take::Take,
     BytePos, Span,
 };
@@ -19,13 +19,10 @@ use crate::{
 pub(crate) type LexResult<T> = Result<T, ErrorKind>;
 
 #[derive(Clone)]
-pub struct Lexer<'a, I>
-where
-    I: Input<'a>,
-{
+pub struct Lexer<'a> {
     comments: Option<&'a dyn Comments>,
     pending_leading_comments: Vec<Comment>,
-    input: I,
+    input: StringInput<'a>,
     cur: Option<char>,
     cur_pos: BytePos,
     start_pos: BytePos,
@@ -39,11 +36,12 @@ where
     atoms: Rc<AtomStoreCell>,
 }
 
-impl<'a, I> Lexer<'a, I>
-where
-    I: Input<'a>,
-{
-    pub fn new(input: I, comments: Option<&'a dyn Comments>, config: ParserConfig) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(
+        input: StringInput<'a>,
+        comments: Option<&'a dyn Comments>,
+        config: ParserConfig,
+    ) -> Self {
         let start_pos = input.last_pos();
 
         Lexer {
@@ -65,7 +63,7 @@ where
 
     fn with_buf<F, Ret>(&mut self, op: F) -> LexResult<Ret>
     where
-        F: for<'any> FnOnce(&mut Lexer<'a, I>, &mut String) -> LexResult<Ret>,
+        F: for<'any> FnOnce(&mut Lexer<'a>, &mut String) -> LexResult<Ret>,
     {
         let b = self.buf.clone();
         let mut buf = b.borrow_mut();
@@ -77,7 +75,7 @@ where
 
     fn with_sub_buf<F, Ret>(&mut self, op: F) -> LexResult<Ret>
     where
-        F: for<'any> FnOnce(&mut Lexer<'a, I>, &mut String) -> LexResult<Ret>,
+        F: for<'any> FnOnce(&mut Lexer<'a>, &mut String) -> LexResult<Ret>,
     {
         let b = self.sub_buf.clone();
         let mut sub_buf = b.borrow_mut();
@@ -89,7 +87,7 @@ where
 
     fn with_buf_and_raw_buf<F, Ret>(&mut self, op: F) -> LexResult<Ret>
     where
-        F: for<'any> FnOnce(&mut Lexer<'a, I>, &mut String, &mut String) -> LexResult<Ret>,
+        F: for<'any> FnOnce(&mut Lexer<'a>, &mut String, &mut String) -> LexResult<Ret>,
     {
         let b = self.buf.clone();
         let r = self.raw_buf.clone();
@@ -103,7 +101,7 @@ where
     }
 }
 
-impl<'a, I: Input<'a>> Iterator for Lexer<'a, I> {
+impl<'a> Iterator for Lexer<'a> {
     type Item = TokenAndSpan;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -133,10 +131,7 @@ pub struct LexerState {
     pos: BytePos,
 }
 
-impl<'a, I> ParserInput for Lexer<'a, I>
-where
-    I: Input<'a>,
-{
+impl<'a> ParserInput for Lexer<'a> {
     type State = LexerState;
 
     fn start_pos(&mut self) -> BytePos {
@@ -185,10 +180,7 @@ where
     }
 }
 
-impl<'a, I> Lexer<'a, I>
-where
-    I: Input<'a>,
-{
+impl<'a> Lexer<'a> {
     #[inline(always)]
     fn cur(&mut self) -> Option<char> {
         self.cur

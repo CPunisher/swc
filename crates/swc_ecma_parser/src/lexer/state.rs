@@ -16,7 +16,7 @@ use swc_ecma_lexer::{
     TokenContexts,
 };
 
-use super::{Context, Input, Lexer, LexerTrait};
+use super::{Context, Lexer, LexerTrait};
 use crate::{
     error::Error,
     input::Tokens,

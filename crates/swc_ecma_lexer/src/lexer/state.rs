@@ -5,7 +5,7 @@ use swc_common::{BytePos, Span};
 use swc_ecma_ast::EsVersion;
 use tracing::trace;
 
-use super::{Context, Input, Lexer, LexerTrait};
+use super::{Context, Lexer, LexerTrait};
 use crate::{
     common::{
         input::Tokens,

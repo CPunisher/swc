@@ -9,7 +9,7 @@ use state::State;
 use swc_atoms::Atom;
 use swc_common::{
     comments::{Comment, CommentKind},
-    input::{Input, StringInput},
+    input::StringInput,
     BytePos, Span,
 };
 use swc_ecma_ast::{EsVersion, Ident};

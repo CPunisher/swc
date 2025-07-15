@@ -60,27 +60,15 @@ impl<'a> StringInput<'a> {
     pub fn end_pos(&self) -> BytePos {
         self.orig_end
     }
-}
 
-/// Creates an [Input] from [SourceFile]. This is an alias for
-///
-/// ```ignore
-///    StringInput::new(&fm.src, fm.start_pos, fm.end_pos)
-/// ```
-impl<'a> From<&'a SourceFile> for StringInput<'a> {
-    fn from(fm: &'a SourceFile) -> Self {
-        StringInput::new(&fm.src, fm.start_pos, fm.end_pos)
-    }
-}
-
-impl<'a> Input<'a> for StringInput<'a> {
+    //=========================================
     #[inline]
-    fn cur(&self) -> Option<char> {
+    pub fn cur(&self) -> Option<char> {
         self.iter.clone().next()
     }
 
     #[inline]
-    fn peek(&self) -> Option<char> {
+    pub fn peek(&self) -> Option<char> {
         let mut iter = self.iter.clone();
         // https://github.com/rust-lang/rust/blob/1.86.0/compiler/rustc_lexer/src/cursor.rs#L56 say `next` is faster.
         iter.next();
@@ -88,7 +76,7 @@ impl<'a> Input<'a> for StringInput<'a> {
     }
 
     #[inline]
-    fn peek_ahead(&self) -> Option<char> {
+    pub fn peek_ahead(&self) -> Option<char> {
         let mut iter = self.iter.clone();
         // https://github.com/rust-lang/rust/blob/1.86.0/compiler/rustc_lexer/src/cursor.rs#L56 say `next` is faster
         iter.next();
@@ -96,8 +84,12 @@ impl<'a> Input<'a> for StringInput<'a> {
         iter.next()
     }
 
+    /// # Safety
+    ///
+    /// This should be called only when `cur()` returns `Some`. i.e.
+    /// when the Input is not empty.
     #[inline]
-    unsafe fn bump(&mut self) {
+    pub unsafe fn bump(&mut self) {
         if let Some(c) = self.iter.next() {
             self.last_pos = self.last_pos + BytePos((c.len_utf8()) as u32);
         } else {
@@ -107,8 +99,10 @@ impl<'a> Input<'a> for StringInput<'a> {
         }
     }
 
+    /// Returns [None] if it's end of input **or** current character is not an
+    /// ascii character.
     #[inline]
-    fn cur_as_ascii(&self) -> Option<u8> {
+    pub fn cur_as_ascii(&self) -> Option<u8> {
         let first_byte = *self.as_str().as_bytes().first()?;
         if first_byte <= 0x7f {
             Some(first_byte)
@@ -118,23 +112,27 @@ impl<'a> Input<'a> for StringInput<'a> {
     }
 
     #[inline]
-    fn is_at_start(&self) -> bool {
+    pub fn is_at_start(&self) -> bool {
         self.orig_start == self.last_pos
     }
 
     /// TODO(kdy1): Remove this?
     #[inline]
-    fn cur_pos(&self) -> BytePos {
+    pub fn cur_pos(&self) -> BytePos {
         self.last_pos
     }
 
     #[inline]
-    fn last_pos(&self) -> BytePos {
+    pub fn last_pos(&self) -> BytePos {
         self.last_pos
     }
 
+    /// # Safety
+    ///
+    /// - start should be less than or equal to end.
+    /// - start and end should be in the valid range of input.
     #[inline]
-    unsafe fn slice(&mut self, start: BytePos, end: BytePos) -> &'a str {
+    pub unsafe fn slice(&mut self, start: BytePos, end: BytePos) -> &'a str {
         debug_assert!(start <= end, "Cannot slice {start:?}..{end:?}");
         let s = self.orig;
 
@@ -151,8 +149,10 @@ impl<'a> Input<'a> for StringInput<'a> {
         ret
     }
 
+    /// Takes items from stream, testing each one with predicate. returns the
+    /// range of items which passed predicate.
     #[inline]
-    fn uncons_while<F>(&mut self, mut pred: F) -> &'a str
+    pub fn uncons_while<F>(&mut self, mut pred: F) -> &'a str
     where
         F: FnMut(char) -> bool,
     {
@@ -178,8 +178,11 @@ impl<'a> Input<'a> for StringInput<'a> {
         ret
     }
 
+    /// # Safety
+    ///
+    /// - `to` be in the valid range of input.
     #[inline]
-    unsafe fn reset_to(&mut self, to: BytePos) {
+    pub unsafe fn reset_to(&mut self, to: BytePos) {
         if self.last_pos == to {
             // No need to reset.
             return;
@@ -194,8 +197,11 @@ impl<'a> Input<'a> for StringInput<'a> {
         self.last_pos = to;
     }
 
+    /// Implementors can override the method to make it faster.
+    ///
+    /// `c` must be ASCII.
     #[inline]
-    fn is_byte(&self, c: u8) -> bool {
+    pub fn is_byte(&self, c: u8) -> bool {
         self.iter
             .as_str()
             .as_bytes()
@@ -204,13 +210,19 @@ impl<'a> Input<'a> for StringInput<'a> {
             .unwrap_or(false)
     }
 
+    /// Implementors can override the method to make it faster.
+    ///
+    /// `s` must be ASCII only.
     #[inline]
-    fn is_str(&self, s: &str) -> bool {
+    pub fn is_str(&self, s: &str) -> bool {
         self.as_str().starts_with(s)
     }
 
+    /// Implementors can override the method to make it faster.
+    ///
+    /// `c` must be ASCII.
     #[inline]
-    fn eat_byte(&mut self, c: u8) -> bool {
+    pub fn eat_byte(&mut self, c: u8) -> bool {
         if self.is_byte(c) {
             self.iter.next();
             self.last_pos = self.last_pos + BytePos(1_u32);
@@ -221,83 +233,14 @@ impl<'a> Input<'a> for StringInput<'a> {
     }
 }
 
-pub trait Input<'a>: Clone {
-    fn cur(&self) -> Option<char>;
-    fn peek(&self) -> Option<char>;
-    fn peek_ahead(&self) -> Option<char>;
-
-    /// # Safety
-    ///
-    /// This should be called only when `cur()` returns `Some`. i.e.
-    /// when the Input is not empty.
-    unsafe fn bump(&mut self);
-
-    /// Returns [None] if it's end of input **or** current character is not an
-    /// ascii character.
-    #[inline]
-    fn cur_as_ascii(&self) -> Option<u8> {
-        self.cur().and_then(|i| {
-            if i.is_ascii() {
-                return Some(i as u8);
-            }
-            None
-        })
-    }
-
-    fn is_at_start(&self) -> bool;
-
-    fn cur_pos(&self) -> BytePos;
-
-    fn last_pos(&self) -> BytePos;
-
-    /// # Safety
-    ///
-    /// - start should be less than or equal to end.
-    /// - start and end should be in the valid range of input.
-    unsafe fn slice(&mut self, start: BytePos, end: BytePos) -> &'a str;
-
-    /// Takes items from stream, testing each one with predicate. returns the
-    /// range of items which passed predicate.
-    fn uncons_while<F>(&mut self, f: F) -> &'a str
-    where
-        F: FnMut(char) -> bool;
-
-    /// # Safety
-    ///
-    /// - `to` be in the valid range of input.
-    unsafe fn reset_to(&mut self, to: BytePos);
-
-    /// Implementors can override the method to make it faster.
-    ///
-    /// `c` must be ASCII.
-    #[inline]
-    #[allow(clippy::wrong_self_convention)]
-    fn is_byte(&self, c: u8) -> bool {
-        match self.cur() {
-            Some(ch) => ch == c as char,
-            _ => false,
-        }
-    }
-
-    /// Implementors can override the method to make it faster.
-    ///
-    /// `s` must be ASCII only.
-    fn is_str(&self, s: &str) -> bool;
-
-    /// Implementors can override the method to make it faster.
-    ///
-    /// `c` must be ASCII.
-    #[inline]
-    fn eat_byte(&mut self, c: u8) -> bool {
-        if self.is_byte(c) {
-            unsafe {
-                // Safety: We are sure that the input is not empty
-                self.bump();
-            }
-            true
-        } else {
-            false
-        }
+/// Creates an [Input] from [SourceFile]. This is an alias for
+///
+/// ```ignore
+///    StringInput::new(&fm.src, fm.start_pos, fm.end_pos)
+/// ```
+impl<'a> From<&'a SourceFile> for StringInput<'a> {
+    fn from(fm: &'a SourceFile) -> Self {
+        StringInput::new(&fm.src, fm.start_pos, fm.end_pos)
     }
 }
 

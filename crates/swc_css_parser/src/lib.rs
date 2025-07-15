@@ -48,7 +48,7 @@ pub fn parse_file<'a, T>(
     errors: &mut Vec<Error>,
 ) -> PResult<T>
 where
-    Parser<Lexer<'a, StringInput<'a>>>: Parse<T>,
+    Parser<Lexer<'a>>: Parse<T>,
 {
     parse_string_input(StringInput::from(fm), comments, config, errors)
 }
@@ -64,7 +64,7 @@ pub fn parse_string_input<'a, T>(
     errors: &mut Vec<Error>,
 ) -> PResult<T>
 where
-    Parser<Lexer<'a, StringInput<'a>>>: Parse<T>,
+    Parser<Lexer<'a>>: Parse<T>,
 {
     let lexer = Lexer::new(input, comments, config);
     let mut parser = Parser::new(lexer, config);

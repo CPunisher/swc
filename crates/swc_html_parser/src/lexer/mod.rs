@@ -2,7 +2,7 @@ use std::{cell::RefCell, char::REPLACEMENT_CHARACTER, collections::VecDeque, mem
 
 use rustc_hash::FxHashSet;
 use swc_atoms::{atom, Atom};
-use swc_common::{input::Input, BytePos, Span};
+use swc_common::{input::StringInput, BytePos, Span};
 use swc_html_ast::{AttributeToken, Raw, Token, TokenAndSpan};
 use swc_html_utils::{Entity, HTML_ENTITIES};
 
@@ -97,11 +97,8 @@ pub enum State {
 
 pub(crate) type LexResult<T> = Result<T, ErrorKind>;
 
-pub struct Lexer<'a, I>
-where
-    I: Input<'a>,
-{
-    input: I,
+pub struct Lexer<'a> {
+    input: StringInput<'a>,
     cur: Option<char>,
     cur_pos: BytePos,
     last_token_pos: BytePos,
@@ -122,11 +119,8 @@ where
     phantom: std::marker::PhantomData<&'a ()>,
 }
 
-impl<'a, I> Lexer<'a, I>
-where
-    I: Input<'a>,
-{
-    pub fn new(input: I) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(input: StringInput<'a>) -> Self {
         let start_pos = input.last_pos();
 
         let mut lexer = Lexer {
@@ -165,7 +159,7 @@ where
     }
 }
 
-impl<'a, I: Input<'a>> Iterator for Lexer<'a, I> {
+impl<'a> Iterator for Lexer<'a> {
     type Item = TokenAndSpan;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -182,10 +176,7 @@ impl<'a, I: Input<'a>> Iterator for Lexer<'a, I> {
     }
 }
 
-impl<'a, I> ParserInput for Lexer<'a, I>
-where
-    I: Input<'a>,
-{
+impl<'a> ParserInput for Lexer<'a> {
     fn start_pos(&mut self) -> BytePos {
         self.input.cur_pos()
     }
@@ -211,10 +202,7 @@ where
     }
 }
 
-impl<'a, I> Lexer<'a, I>
-where
-    I: Input<'a>,
-{
+impl<'a> Lexer<'a> {
     #[inline(always)]
     fn next(&mut self) -> Option<char> {
         self.input.cur()
@@ -1456,7 +1444,7 @@ where
             }
             // https://html.spec.whatwg.org/multipage/parsing.html#rcdata-end-tag-name-state
             State::RcdataEndTagName => {
-                let anything_else = |lexer: &mut Lexer<'a, I>| {
+                let anything_else = |lexer: &mut Lexer<'a>| {
                     lexer.finish_tag_token_name();
                     lexer.emit_character_token('<');
                     lexer.emit_character_token('/');
@@ -1580,7 +1568,7 @@ where
             }
             // https://html.spec.whatwg.org/multipage/parsing.html#rawtext-end-tag-name-state
             State::RawtextEndTagName => {
-                let anything_else = |lexer: &mut Lexer<'a, I>| {
+                let anything_else = |lexer: &mut Lexer<'a>| {
                     lexer.finish_tag_token_name();
                     lexer.emit_character_token('<');
                     lexer.emit_character_token('/');
@@ -1712,7 +1700,7 @@ where
             }
             // https://html.spec.whatwg.org/multipage/parsing.html#script-data-end-tag-name-state
             State::ScriptDataEndTagName => {
-                let anything_else = |lexer: &mut Lexer<'a, I>| {
+                let anything_else = |lexer: &mut Lexer<'a>| {
                     lexer.finish_tag_token_name();
                     lexer.emit_character_token('<');
                     lexer.emit_character_token('/');
@@ -2012,7 +2000,7 @@ where
             }
             // https://html.spec.whatwg.org/multipage/parsing.html#script-data-escaped-end-tag-name-state
             State::ScriptDataEscapedEndTagName => {
-                let anything_else = |lexer: &mut Lexer<'a, I>| {
+                let anything_else = |lexer: &mut Lexer<'a>| {
                     lexer.finish_tag_token_name();
                     lexer.emit_character_token('<');
                     lexer.emit_character_token('/');
@@ -2409,7 +2397,7 @@ where
             }
             // https://html.spec.whatwg.org/multipage/parsing.html#attribute-name-state
             State::AttributeName => {
-                let anything_else = |lexer: &mut Lexer<'a, I>, c: char| {
+                let anything_else = |lexer: &mut Lexer<'a>, c: char| {
                     lexer.append_to_attribute_token_name(c, c);
                 };
 
@@ -2676,7 +2664,7 @@ where
             }
             // https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(unquoted)-state
             State::AttributeValueUnquoted => {
-                let anything_else = |lexer: &mut Lexer<'a, I>, c: char| {
+                let anything_else = |lexer: &mut Lexer<'a>, c: char| {
                     lexer.append_to_attribute_token_value(Some(c), Some(c));
                 };
 
@@ -2885,7 +2873,7 @@ where
             // https://html.spec.whatwg.org/multipage/parsing.html#markup-declaration-open-state
             State::MarkupDeclarationOpen => {
                 let cur_pos = self.input.cur_pos();
-                let anything_else = |lexer: &mut Lexer<'a, I>| {
+                let anything_else = |lexer: &mut Lexer<'a>| {
                     lexer.emit_error(ErrorKind::IncorrectlyOpenedComment);
                     lexer.create_comment_token("<!");
                     lexer.state = State::BogusComment;

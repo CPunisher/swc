@@ -2,7 +2,7 @@ use std::{collections::VecDeque, mem::take};
 
 use rustc_hash::FxHashSet;
 use swc_atoms::Atom;
-use swc_common::{input::Input, BytePos, Span};
+use swc_common::{input::StringInput, BytePos, Span};
 use swc_xml_ast::{AttributeToken, Token, TokenAndSpan};
 
 use crate::{
@@ -119,11 +119,8 @@ struct Cdata {
 
 pub(crate) type LexResult<T> = Result<T, ErrorKind>;
 
-pub struct Lexer<'a, I>
-where
-    I: Input<'a>,
-{
-    input: I,
+pub struct Lexer<'a> {
+    input: StringInput<'a>,
     cur: Option<char>,
     cur_pos: BytePos,
     last_token_pos: BytePos,
@@ -140,14 +137,10 @@ where
     current_tag_token: Option<Tag>,
     current_cdata_token: Option<Cdata>,
     attribute_start_position: Option<BytePos>,
-    phantom: std::marker::PhantomData<&'a ()>,
 }
 
-impl<'a, I> Lexer<'a, I>
-where
-    I: Input<'a>,
-{
-    pub fn new(input: I) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(input: StringInput<'a>) -> Self {
         let start_pos = input.last_pos();
 
         let mut lexer = Lexer {
@@ -168,7 +161,6 @@ where
             current_tag_token: None,
             current_cdata_token: None,
             attribute_start_position: None,
-            phantom: std::marker::PhantomData,
         };
 
         // A leading Byte Order Mark (BOM) causes the character encoding argument to be
@@ -184,7 +176,7 @@ where
     }
 }
 
-impl<'a, I: Input<'a>> Iterator for Lexer<'a, I> {
+impl<'a> Iterator for Lexer<'a> {
     type Item = TokenAndSpan;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -201,10 +193,7 @@ impl<'a, I: Input<'a>> Iterator for Lexer<'a, I> {
     }
 }
 
-impl<'a, I> ParserInput for Lexer<'a, I>
-where
-    I: Input<'a>,
-{
+impl<'a> ParserInput for Lexer<'a> {
     fn start_pos(&mut self) -> swc_common::BytePos {
         self.input.cur_pos()
     }
@@ -218,10 +207,7 @@ where
     }
 }
 
-impl<'a, I> Lexer<'a, I>
-where
-    I: Input<'a>,
-{
+impl<'a> Lexer<'a> {
     #[inline(always)]
     fn next(&mut self) -> Option<char> {
         self.input.cur()
@@ -308,7 +294,7 @@ where
 
     fn consume_character_reference(&mut self) -> Option<(char, String)> {
         let cur_pos = self.input.cur_pos();
-        let anything_else = |lexer: &mut Lexer<'a, I>| {
+        let anything_else = |lexer: &mut Lexer<'a>| {
             lexer.emit_error(ErrorKind::InvalidEntityCharacter);
             lexer.cur_pos = cur_pos;
             unsafe {
@@ -1255,7 +1241,7 @@ where
             }
             State::MarkupDeclaration => {
                 let cur_pos = self.input.cur_pos();
-                let anything_else = |lexer: &mut Lexer<'a, I>| {
+                let anything_else = |lexer: &mut Lexer<'a>| {
                     lexer.emit_error(ErrorKind::IncorrectlyOpenedComment);
                     lexer.create_comment_token(None, "<!");
                     lexer.state = State::BogusComment;
