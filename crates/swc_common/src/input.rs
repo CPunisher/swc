@@ -61,7 +61,6 @@ impl<'a> StringInput<'a> {
         self.orig_end
     }
 
-    //=========================================
     #[inline]
     pub fn cur(&self) -> Option<char> {
         self.iter.clone().next()
