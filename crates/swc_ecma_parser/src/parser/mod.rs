@@ -243,18 +243,21 @@ impl<I: Tokens> Parser<I> {
                 shebang,
             })
         } else {
-            let body = body
-                .into_iter()
-                .map(|item| match item {
-                    ModuleItem::ModuleDecl(_) => unreachable!("Module is handled above"),
-                    ModuleItem::Stmt(stmt) => stmt,
+            let mut stmts = Vec::with_capacity(body.len());
+            for item in body.into_iter() {
+                match item {
+                    ModuleItem::Stmt(stmt) => stmts.push(stmt),
+                    ModuleItem::ModuleDecl(_) => {
+                        unreachable!("module is handled above")
+                    }
                     #[cfg(swc_ast_unknown)]
                     _ => unreachable!(),
-                })
-                .collect();
+                }
+            }
+
             Program::Script(Script {
                 span: self.span(start),
-                body,
+                body: stmts,
                 shebang,
             })
         };
